@@ -1,0 +1,11 @@
+.*.swp
+sat
+sat-naive
+sat-up
+sat-cdcl
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc

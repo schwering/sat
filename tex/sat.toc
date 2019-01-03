@@ -1,0 +1,7 @@
+\select@language {english}
+\beamer@sectionintoc {1}{Satisfiability and Complexity Theory}{10}{0}{1}
+\beamer@sectionintoc {2}{Solver Ingredient 1: Watched-Literal Scheme}{52}{0}{2}
+\beamer@sectionintoc {3}{Solver Ingredient 2: Conflict-Driven Clause Learning}{102}{0}{3}
+\beamer@sectionintoc {4}{Other Solver Ingredients}{108}{0}{4}
+\beamer@sectionintoc {5}{Conclusion}{112}{0}{5}
+\beamer@sectionintoc {6}{Beyond SAT}{123}{0}{6}

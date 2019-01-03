@@ -5,18 +5,20 @@ The code should be more accessible compared to real-world SAT solvers
 and illustrate the improvements of unit propagation and conflict-driven
 clause learning.
 
-A little [visualisation](html/sat.html) is available as well.
+A [visualisation of the search tree](html/sat.html) as well as the
+[lecture slides](tex/sat.pdf) are here, too.
 
 ## Overview
 
 This repository contains three different SAT solvers:
 
-1. `sat-naive.cc` implements the naive algorithm from Slide 21
-2. `sat-up.cc` implements the algorithm from Slide 25 with the
-   Watched-Literal Scheme
-3. `sat-cdcl.cc` implements the algorithm from Slide 31 with the
-   Watched-Literal Scheme and the FirstUIP scheme for choosing
-   conflict clauses.
+1. [`sat-naive.cc`](https://github.com/schwering/sat/blob/master/sat-naive.cc)
+   implements the naive algorithm from Slide 21.
+2. [`sat-up.cc`](https://github.com/schwering/sat/blob/master/sat-up.cc)
+   implements the algorithm from Slide 25 with the Watched-Literal Scheme.
+3. [`sat-cdcl.cc`](https://github.com/schwering/sat/blob/master/sat-cdcl.cc)
+   implements the algorithm from Slide 31 with the Watched-Literal Scheme and
+   the FirstUIP scheme for choosing conflict clauses.
 
 The files represent the evolution of our SAT algorithm in the lecture.
 Each of the files is stand-alone.
@@ -236,4 +238,9 @@ optimisations.
 You can play around with the [visualisation of the search tree](html/sat.html).
 You can install it locally as well with Emscripten, a compiler back end for
 Clang that produces Javascript.
+
+## Slides
+
+There are also the [lecture slides](tex/sat.pdf) for which I wrote these
+solvers.
 
