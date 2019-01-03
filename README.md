@@ -34,7 +34,6 @@ ignore these warnings.
 Then run `./sat-[naive|up|cdcl] [-e] <cnf-file>`. The optional flag `-e`
 makes the solver enumerate all solutions. The input file must be in DIMACS CNF
 format.
-You can get a few sample files from <http://www.cse.unsw.edu.au/~cschwering/sat/>.
 
 There are probably still a few bugs in the solvers. Let me know if you find one.
 
@@ -227,8 +226,7 @@ optimisations.
 
 ## Visualisation
 
-You can play around with the visualisation of the search tree at
-<http://www.cse.unsw.edu.au/~cschwering/sat/sat.html>.
+You can play around with the visualisation of the search tree at <web/sat.html>.
 You can install it locally as well with Emscripten, a compiler back end for
 Clang that produces Javascript.
 

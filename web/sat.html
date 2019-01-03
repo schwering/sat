@@ -1,0 +1,395 @@
+<!DOCTYPE HTML>
+<!-- vim:filetype=html:textwidth=200:shiftwidth=4:softtabstop=4:expandtab
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8"> 
+    <meta name="viewport" content="width=device-width, initial-scale=0.5">
+    <title>SAT</title>
+
+    <style type="text/css">
+        body { font-family: 'Open Sans', sans-serif; font-size: 140%; }
+        .stdout { color: black; }
+        .sat { color: green; }
+        .unsat { color: red; }
+        .stderr { color: red; }
+        svg { background-color: #999; border: 1px solid black; }
+    </style>
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script>window.jQuery || document.write('<script src="jquery.min.js">\x3C/script>')</script>
+    <script src="//d3js.org/d3.v5.min.js"></script>
+    <script>window.d3 || document.write('<script src="d3.v5.min.js">\x3C/script>')</script>
+    <script>
+    function getParameterByName(name) {
+        var url = window.location.href;
+        name = name.replace(/[\[\]]/g, "\\$&");
+        var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)");
+        var results = regex.exec(url);
+        if (!results) return null;
+        if (!results[2]) return '';
+        return decodeURIComponent(results[2].replace(/\+/g, " "));
+    }
+
+    function scrollToShow(e) {
+        var currentTop = $(document).scrollTop();
+        var currentBottom = $(document).scrollTop() + $(window).height();
+        var goalTop = $(e).offset().top;
+        var goalBottom = $(e).offset().top + $(e).outerHeight();
+        var inDisplay = function(pos) { return currentTop <= pos && pos <= currentBottom; };
+        var topOfScreen = function(pos) { return pos < currentTop; };
+        var belowOfScreen = function(pos) { return pos > currentBottom; };
+        var fitsIntoScreen = $(e).outerHeight() <= $(window).height();
+        var goal;
+        var timeout = 200;
+        if (inDisplay(goalTop) && inDisplay(goalBottom)) {
+            // No need to scroll.
+        } else if (!inDisplay(goalTop) && belowOfScreen(goalTop) && fitsIntoScreen) {
+            // Scroll so that bottom of element aligns with bottom of window.
+            $('html, body').animate({ scrollTop: goalBottom - $(window).height() }, timeout);
+        } else if (!inDisplay(goalTop)) {
+            // Scroll so that top of element aligns with top of window.
+            $('html, body').animate({ scrollTop: goalTop }, timeout);
+        } else if (!inDisplay(goalBottom)) {
+            // Scroll so that bottom of element aligns with bottom of window.
+            $('html, body').animate({ scrollTop: goalBottom - $(window).height() }, timeout);
+        }
+    }
+
+    function log(str, cls) {
+        if (str.indexOf('UNSATISFIABLE') >= 0) {
+            cls += ' unsat';
+        } else if (str.indexOf('SATISFIABLE') >= 0) {
+            cls += ' sat';
+        }
+        $('#log').append('<div class="'+ cls +'">'+ str +'</div>');
+    }
+
+    var Module = {
+        'print': function(msg) { log(msg, 'stdout'); },
+        'printErr': function(msg) { log(msg, 'stderr'); },
+    };
+
+    var example = getParameterByName('e');
+    if (!example || example.trim() == '') {
+        example = null;
+    }
+    var mode = 'cdcl';
+    if (getParameterByName('m') == 'cdcl') {
+        mode = 'cdcl';
+    } else if (getParameterByName('m') == 'up') {
+        mode = 'up';
+    } else if (getParameterByName('m') == 'naive') {
+        mode = 'naive';
+    }
+    var MODES = {'naive': 'Naive', 'up': 'Unit Propagation', 'cdcl': 'Clause Learning'};
+    var EXAMPLES = ['ex0.cnf', 'ex1.cnf', 'ex2.cnf', 'sudoku.cnf', 'pigeon-4.cnf', 'pigeon-5.cnf', 'pigeon-6.cnf', 'aim-50-1_6-yes1-4.cnf', 'flat30-1.cnf', 'uf75-013.cnf', 'lisa20_2_a.shuffled.cnf', 'example2_gr_rcs_w6.shuffled.cnf'];
+    </script>
+    <script>document.write('<script src="sat-'+ mode +'.js">\x3C/script>')</script>
+</head>
+
+<body>
+<h1>SAT Solver</h1>
+<p>Algorithm: <script>
+    var i = 0;
+    for (var m in MODES) {
+        if (i > 0) {
+            document.write(' | ');
+        }
+        if (mode != m) {
+            document.write('<a href="sat.html?m='+ m +'&'+ (example != null ? 'e='+ example : '') +'">'+ MODES[m] +'</a>');
+        } else {
+            document.write(MODES[m] +'');
+        }
+        ++i;
+    }
+</script></p>
+<p>Example: <select id="examples"><option value="">None</option></select></p>
+
+<div>
+    <textarea id="cnf" rows="10" cols="80" placeholder="Input formula in DIMACS CNF format"></textarea><br />
+    <input id="solve" type="button" value="Solve!" />
+</div>
+
+<svg id="graph" width="1500" height="700"></svg>
+<div id="legend" style="padding-top: 1em; padding-bottom: 1em;"></div>
+<div id="log" style="padding-top: 1ex;"></div>
+<div id="stats" style="padding-top: 1ex;"></div>
+
+<script>
+var solved = false;
+
+$(document).ready(function() {
+    for (var i = 0; i < EXAMPLES.length; ++i) {
+        var e = EXAMPLES[i];
+        var o = $('#examples').append($('<option>', {value: e, text: e}));
+    }
+    if (example) {
+        $('#examples').val(example).select();
+    }
+    $('#examples').change(function() {
+        var e = document.getElementById('examples').value;
+        var url = [document.location.protocol, '//', document.location.host, document.location.pathname].join('');
+        url += '?m='+ mode +'&e='+ e;
+        document.location.assign(url);
+    });
+    if (example != null) {
+        $.ajax({
+            url : '../cnf/'+ example,
+            dataType: 'text',
+            success: function(data) { if (data && data != '') { $('#cnf').val(data); $('#cnf').change(); } },
+        });
+    }
+    $('#cnf').change();
+    $('#solve').focus();
+});
+
+$('#cnf').change(function() {
+    if (solved || $('#cnf').val().length === 0) {
+        $('#solve').attr('disabled', 'disabled');
+    } else {
+        $('#solve').removeAttr('disabled');
+    }
+});
+
+$('#solve').click(function() {
+    solved = true;
+    $('#cnf').change();
+    var cnf = $('#cnf').val();
+    solve(cnf);
+    scrollToShow($('#stats'), 300);
+    return false;
+});
+</script>
+
+<script>
+var svg;
+var width;
+var height;
+var color;
+
+var simulation;
+var node;
+var link;
+
+var data = [];
+var links = [];
+
+$(document).ready(function() {
+    width = .99 * $(window).width();
+    height = .8 * $(window).height();
+
+    $('#graph').width(width);
+    $('#graph').height(height);
+
+    svg = d3.select('#graph');
+    color = d3.scaleOrdinal(d3.schemeCategory10);
+
+    simulation = d3.forceSimulation(data)
+        .force('charge', d3.forceManyBody().strength(-100))
+        .force('link', d3.forceLink(links).distance(75))
+        .force('x', d3.forceX())
+        .force('y', d3.forceY())
+        .alphaTarget(1)
+        .on('tick', ticked);
+
+    var g = svg.append('g')
+        .attr('transform', 'translate(' + width / 2 + ',' + height / 2 + ')');
+    link = g.append('g')
+        .attr('stroke', '#000')
+        .attr('stroke-width', 1.5)
+        .selectAll('.link');
+    node = g.append('g')
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 1.5)
+        .selectAll('.node');
+});
+
+function dragstarted(d) {
+  if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x;
+  d.fy = d.y;
+}
+
+function dragged(d) {
+  d.fx = d3.event.x;
+  d.fy = d3.event.y;
+}
+
+function dragended(d) {
+  if (!d3.event.active) simulation.alphaTarget(0);
+  d.fx = null;
+  d.fy = null;
+}
+
+var maxVar = 0;
+
+function varFillColor(x) { return x == 0 ? 'black' : color(Math.abs(x) - 1); }
+function litStrokeColor(x) { return x >= '0' ? 'black' : 'white'; }
+
+function restart() {
+    var total = Math.pow(2, maxVar);
+    total = Math.pow(Math.log(total), 1/1.25);
+    for (var i = 0; i < data.length; ++i) {
+        data[i].rel_size = data[i].size / total;
+    }
+    var scaling = 4;
+
+    // Apply the general update pattern to the nodes.
+    node = node.data(data, d => d.id);
+    node.exit().remove();
+    var n = node.enter();
+    n = n.append('circle')
+      .attr('fill', d => varFillColor(d.id))
+      .attr('stroke', d => litStrokeColor(d.id))
+      .attr('stroke-width', '2pt')
+      .attr('r', d => Math.ceil(3 + scaling * Math.sqrt(d.rel_size)))
+      //.attr('class', d => 'var-'+ Math.abs(d.id))
+      .on('mouseover', d => highlightVar(d.id))
+      .on('mouseout', d => unhighlightVar(d.id))
+      .call(d3.drag()
+          .on("start", dragstarted)
+          .on("drag", dragged)
+          .on("end", dragended));
+    node = n.merge(node);
+
+    // Apply the general update pattern to the links.
+    link = link.data(links, d => d.source.id + '-' + d.target.id);
+    link.exit().remove();
+    link = link.enter()
+        .append('line')
+        .attr('stroke-width', d => Math.max(1, 4 - d.source.level/2))
+        .merge(link);
+
+    // Update and restart the simulation.
+    simulation.nodes(data);
+    simulation.force('link').links(links);
+    simulation.alpha(1).restart();
+}
+
+function ticked() {
+    node.attr('cx', d => d.x)
+        .attr('cy', d => d.y);
+    link.attr('x1', d => d.source.x)
+        .attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x)
+        .attr('y2', d => d.target.y);
+}
+
+var decisionVars = new Set();
+
+function createLegend() {
+    var xs = Array.from(decisionVars);
+    xs.sort((x, y) => x - y);
+    var legend = $('#legend');
+    for (var i = 0; i < xs.length; ++i) {
+        var x = xs[i];
+        var s = '<span id="legend'+ x +'">'+ x +'</span>';
+        var e = $(s);
+        (x => e.mouseover(() => highlightVar(x)))(x);
+        (x => e.mouseout(() => unhighlightVar(x)))(x);
+        e.appendTo(legend);
+        unhighlightVar(x);
+    }
+}
+
+function highlightVar(x) {
+    if (x != 0) {
+        x = Math.abs(x);
+        $('#legend'+ x).css('border-color', 'black');
+        d3.selectAll('circle')
+            .filter(d => Math.abs(d.id) == x)
+            .style("stroke-dasharray", ("4, 4"))
+    }
+}
+
+function unhighlightVar(x) {
+    if (x != 0) {
+        x = Math.abs(x);
+        $('#legend'+ x).css('background-color', varFillColor(x));
+        $('#legend'+ x).css('border-color', varFillColor(x));
+        $('#legend'+ x).css('border-left-width', '.5em');
+        $('#legend'+ x).css('border-right-width', '.5em');
+        $('#legend'+ x).css('border-left-style', 'solid');
+        $('#legend'+ x).css('border-right-style', 'solid');
+        $('#legend'+ x).css('padding', '.25em');
+        d3.selectAll('circle')
+            .filter(d => Math.abs(d.id) == x)
+            .style("stroke-dasharray", '')
+    }
+}
+
+var enqueueCount = 0;
+
+function createStats() {
+    var total = Math.pow(2, 2 * maxVar) - 1;
+    var rel = enqueueCount / total;
+    var pct = rel * 100;
+    // 10^{-x} = rel <=> 10^x = 1/rel <=> -x = -log(1/rel)/log(10)
+    var exp = Math.ceil(-Math.log(1 / pct) / Math.log(10));
+    $('#stats').html('Searched '+ (pct.toFixed(2) > 0 ? pct.toFixed(2) : '&le; 10<sup>'+ exp) +'</sup>% of the search space (traversed '+ enqueueCount +' of 2<sup>'+ (2 * maxVar) +'</sup>-1 = '+ total +' nodes in search tree, where each node represents a variable assignment)');
+}
+
+var trail = [];
+var root = {id: 0, level: 0, size: 1, label: 'Root'};
+trail.push(root);
+data.push(root);
+
+function enqueued(x, level) {
+    if (maxVar < Math.abs(x)) {
+        maxVar = Math.abs(x);
+    }
+    ++enqueueCount;
+    var conflict = trail.find(d => d.id == -x);
+    if (!conflict && level == trail[trail.length-1].level) {
+        for (var i = 0; i < trail.length; ++i) {
+            ++trail[i].size;
+        }
+    } else {
+        while (trail[trail.length-1].level >= level) {
+           trail.pop();
+        }
+        var source = trail[trail.length-1];
+        var target = {id: x, level: level, size: 1, label: x};
+        data.push(target);
+        trail.push(target);
+        links.push({source: source, target: target});
+        decisionVars.add(Math.abs(x));
+    }
+}
+
+function solve(cnf) {
+    Module.ccall('sat_solve', 'void', ['string'], [cnf]);
+    var askLimit = 2000;
+    if (data.length < askLimit || confirm('The graph might get large ('+ data.length +' nodes). Do you want to continue?')) {
+        restart();
+        createLegend();
+    }
+    createStats();
+}
+</script>
+
+<hr />
+
+<p>This is a simple SAT with three algorithms: the <a href="sat-naive.cc">first one</a> makes a decision on every literal, the <a href="sat-up.cc">second one</a> adds unit propagation using the watched literal scheme, the <a href="sat-cdcl.cc">third one</a> adds clause learning.</p>
+
+<p>The above graph is supposed to visualise the decisions made by the SAT solver.
+Every node n represents a literal x that was either a decision or implied by a newly learnt clause.
+Literals with identical variables have identical colors, positive (negative) literals have black (white) stroke.
+The size of each node corresponds the computational cost of the subtree induced by this node: it represents how many literals were set as decision literals or after by unit propagation before a solution or a conflict was found in the subtree.
+This number is weighted with 2<sup>n</sup> where n is the number of variables.
+Hence, the node size is comparable between runs of different algorithms for the same SAT problem, but not among different SAT problems.
+</p>
+
+<p>You need to reload page after solving.</p>
+
+<p>The solver as well as visualisation run locally on your browser.
+For visualisation purposes the C++ code is compiled to Javascript using <a href="http://www.emscripten.org">Emscripten</a>
+Large graphs might make your browser crash.
+What worked for me when the browser begins to lag is closing or refreshing the tab quickly.</p>
+
+<p>Let me know if you want to leave any feedback: Christoph Schwering (schwering@unsw.edu.au)</p>
+
+</body>
+</html>
+
