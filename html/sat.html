@@ -191,7 +191,7 @@ $(document).ready(function() {
         .force('x', d3.forceX())
         .force('y', d3.forceY())
         .alphaTarget(1)
-        .on('tick', ticked);
+        .on('tick', tick);
 
     var g = svg.append('g')
         .attr('transform', 'translate(' + width / 2 + ',' + height / 2 + ')');
@@ -205,21 +205,21 @@ $(document).ready(function() {
         .selectAll('.node');
 });
 
-function dragstarted(d) {
-  if (!d3.event.active) simulation.alphaTarget(0.3).restart();
-  d.fx = d.x;
-  d.fy = d.y;
+function dragstart(d, i) {
+    simulation.stop();
 }
 
-function dragged(d) {
-  d.fx = d3.event.x;
-  d.fy = d3.event.y;
+function dragmove(d, i) {
+    d.px += d3.event.dx;
+    d.py += d3.event.dy;
+    d.x += d3.event.dx;
+    d.y += d3.event.dy;
+    tick();
 }
 
-function dragended(d) {
-  if (!d3.event.active) simulation.alphaTarget(0);
-  d.fx = null;
-  d.fy = null;
+function dragend(d, i) {
+    d.fixed = true;
+    tick();
 }
 
 var maxVar = 0;
@@ -248,10 +248,11 @@ function restart() {
       .on('mouseover', d => highlightVar(d.id))
       .on('mouseout', d => unhighlightVar(d.id))
       .call(d3.drag()
-          .on("start", dragstarted)
-          .on("drag", dragged)
-          .on("end", dragended));
+          .on('start', dragstart)
+          .on('drag', dragmove)
+          .on('end', dragend));
     node = n.merge(node);
+    node.exit().remove();
 
     // Apply the general update pattern to the links.
     link = link.data(links, d => d.source.id + '-' + d.target.id);
@@ -267,7 +268,7 @@ function restart() {
     simulation.alpha(1).restart();
 }
 
-function ticked() {
+function tick() {
     node.attr('cx', d => d.x)
         .attr('cy', d => d.y);
     link.attr('x1', d => d.source.x)
