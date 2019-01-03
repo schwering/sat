@@ -1,5 +1,5 @@
 // vim:filetype=cpp:textwidth=120:shiftwidth=2:softtabstop=2:expandtab
-// Christoph Schwering (c.schwering@unsw.edu.au)
+// Christoph Schwering (schwering@gmail.com)
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>

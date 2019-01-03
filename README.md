@@ -1,8 +1,15 @@
 # SAT Solvers
 
+These are SAT solvers I wrote for teaching the COMP4418 class at UNSW.
+The code should be more accessible compared to real-world SAT solvers
+and illustrate the improvements of unit propagation and conflict-driven
+clause learning.
+
+A little [visualisation](html/sat.html) is available as well.
+
 ## Overview
 
-This archive contains the code of three different SAT solvers:
+This repository contains three different SAT solvers:
 
 1. `sat-naive.cc` implements the naive algorithm from Slide 21
 2. `sat-up.cc` implements the algorithm from Slide 25 with the
@@ -226,7 +233,7 @@ optimisations.
 
 ## Visualisation
 
-You can play around with the visualisation of the search tree at <web/sat.html>.
+You can play around with the [visualisation of the search tree](html/sat.html).
 You can install it locally as well with Emscripten, a compiler back end for
 Clang that produces Javascript.
 
